@@ -18,6 +18,7 @@ const jobCount = document.getElementById('job-count');
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
   loadJobs();
+  setupEventDelegation();
 });
 
 // Event Listeners
@@ -29,11 +30,46 @@ jobUrlInput.addEventListener('input', () => {
   scrapeStatus.className = 'scrape-status';
 });
 
+// Event delegation for dynamic elements (performance optimization)
+function setupEventDelegation() {
+  jobsTbody.addEventListener('change', (e) => {
+    if (e.target.classList.contains('status-select')) {
+      handleStatusChange(e);
+    }
+  });
+
+  jobsTbody.addEventListener('click', (e) => {
+    if (e.target.classList.contains('delete-btn')) {
+      handleDelete(e);
+    }
+  });
+
+  jobsTbody.addEventListener('dblclick', (e) => {
+    if (e.target.classList.contains('editable')) {
+      handleEditStart(e);
+    }
+  });
+
+  // Keyboard support for editable fields (accessibility)
+  jobsTbody.addEventListener('keydown', (e) => {
+    if (e.target.classList.contains('editable') && (e.key === 'Enter' || e.key === ' ')) {
+      e.preventDefault();
+      handleEditStart(e);
+    }
+  });
+}
+
 async function handleAddJob(e) {
   e.preventDefault();
 
   const url = jobUrlInput.value.trim();
   if (!url) return;
+
+  if (!isValidHttpUrl(url)) {
+    scrapeStatus.textContent = 'Please enter a valid HTTP or HTTPS URL';
+    scrapeStatus.className = 'scrape-status error';
+    return;
+  }
 
   addBtn.disabled = true;
   scrapeStatus.textContent = 'Scraping job details...';
@@ -101,10 +137,16 @@ async function handleAddJob(e) {
 }
 
 async function loadJobs() {
-  const result = await window.api.getAllJobs();
-  if (result.success) {
-    allJobs = result.data;
-    renderJobs();
+  try {
+    const result = await window.api.getAllJobs();
+    if (result.success) {
+      allJobs = result.data;
+      renderJobs();
+    } else {
+      showNotification('Failed to load jobs: ' + (result.error || 'Unknown error'), 'error');
+    }
+  } catch (error) {
+    showNotification('Error loading jobs: ' + error.message, 'error');
   }
 }
 
@@ -127,71 +169,91 @@ function renderJobs() {
 
     filteredJobs.forEach(job => {
       const row = document.createElement('tr');
+      const companyName = escapeHtml(job.company) || 'Unknown';
+      const jobTitle = escapeHtml(job.title) || 'View Listing';
+
       row.innerHTML = `
         <td>
-          <span class="editable" data-field="company" data-id="${job.id}">
+          <span class="editable" data-field="company" data-id="${job.id}" tabindex="0" role="button" aria-label="Edit company name">
             ${escapeHtml(job.company) || '<em>Unknown</em>'}
           </span>
         </td>
         <td>
-          <a href="${escapeHtml(job.url)}" target="_blank" title="Open job listing">
+          <a href="${sanitizeUrl(job.url)}" target="_blank" rel="noopener noreferrer" title="Open job listing">
             ${escapeHtml(job.title) || '<em>View Listing</em>'}
           </a>
         </td>
         <td>
-          <span class="editable" data-field="location" data-id="${job.id}">
+          <span class="editable" data-field="location" data-id="${job.id}" tabindex="0" role="button" aria-label="Edit location">
             ${escapeHtml(job.location) || '<em>Unknown</em>'}
           </span>
         </td>
         <td>${formatDate(job.applied_date)}</td>
         <td>
-          <select class="status-select ${job.status}" data-id="${job.id}">
+          <select class="status-select ${job.status}" data-id="${job.id}" aria-label="Update status for ${jobTitle} at ${companyName}">
             <option value="waiting" ${job.status === 'waiting' ? 'selected' : ''}>Waiting</option>
             <option value="interviewing" ${job.status === 'interviewing' ? 'selected' : ''}>Interviewing</option>
             <option value="rejected" ${job.status === 'rejected' ? 'selected' : ''}>Rejected</option>
           </select>
         </td>
         <td>
-          <button class="delete-btn" data-id="${job.id}">Delete</button>
+          <button class="delete-btn" data-id="${job.id}" aria-label="Delete application for ${jobTitle} at ${companyName}">Delete</button>
         </td>
       `;
       jobsTbody.appendChild(row);
-    });
-
-    // Add event listeners
-    document.querySelectorAll('.status-select').forEach(select => {
-      select.addEventListener('change', handleStatusChange);
-    });
-
-    document.querySelectorAll('.delete-btn').forEach(btn => {
-      btn.addEventListener('click', handleDelete);
-    });
-
-    document.querySelectorAll('.editable').forEach(span => {
-      span.addEventListener('dblclick', handleEditStart);
     });
   }
 }
 
 async function handleStatusChange(e) {
   const id = parseInt(e.target.dataset.id);
+  if (isNaN(id) || id <= 0) {
+    showNotification('Invalid job ID', 'error');
+    return;
+  }
+
   const status = e.target.value;
+  const job = allJobs.find(j => j.id === id);
+  const previousStatus = job ? job.status : 'waiting';
 
   e.target.className = 'status-select ' + status;
 
-  await window.api.updateStatus(id, status);
-
-  // Update local data
-  const job = allJobs.find(j => j.id === id);
-  if (job) job.status = status;
+  try {
+    const result = await window.api.updateStatus(id, status);
+    if (result.success) {
+      if (job) job.status = status;
+      showNotification('Status updated', 'success');
+    } else {
+      e.target.value = previousStatus;
+      e.target.className = 'status-select ' + previousStatus;
+      showNotification('Failed to update status: ' + (result.error || 'Unknown error'), 'error');
+    }
+  } catch (error) {
+    e.target.value = previousStatus;
+    e.target.className = 'status-select ' + previousStatus;
+    showNotification('Error updating status: ' + error.message, 'error');
+  }
 }
 
 async function handleDelete(e) {
   const id = parseInt(e.target.dataset.id);
+  if (isNaN(id) || id <= 0) {
+    showNotification('Invalid job ID', 'error');
+    return;
+  }
 
   if (confirm('Are you sure you want to delete this application?')) {
-    await window.api.deleteJob(id);
-    loadJobs();
+    try {
+      const result = await window.api.deleteJob(id);
+      if (result.success) {
+        showNotification('Application deleted', 'success');
+        loadJobs();
+      } else {
+        showNotification('Failed to delete: ' + (result.error || 'Unknown error'), 'error');
+      }
+    } catch (error) {
+      showNotification('Error deleting application: ' + error.message, 'error');
+    }
   }
 }
 
@@ -199,8 +261,13 @@ function handleEditStart(e) {
   const span = e.target;
   const field = span.dataset.field;
   const id = parseInt(span.dataset.id);
-  const job = allJobs.find(j => j.id === id);
 
+  if (isNaN(id) || id <= 0) {
+    showNotification('Invalid job ID', 'error');
+    return;
+  }
+
+  const job = allJobs.find(j => j.id === id);
   if (!job) return;
 
   const currentValue = job[field] || '';
@@ -209,6 +276,7 @@ function handleEditStart(e) {
   input.type = 'text';
   input.className = 'edit-input';
   input.value = currentValue;
+  input.setAttribute('aria-label', `Edit ${field}`);
 
   span.innerHTML = '';
   span.appendChild(input);
@@ -220,9 +288,22 @@ function handleEditStart(e) {
     span.innerHTML = escapeHtml(newValue) || '<em>Unknown</em>';
 
     if (newValue !== currentValue) {
-      await window.api.updateJob(id, { [field]: newValue || null });
-      job[field] = newValue || null;
+      try {
+        const result = await window.api.updateJob(id, { [field]: newValue || null });
+        if (result.success) {
+          job[field] = newValue || null;
+          showNotification('Updated successfully', 'success');
+        } else {
+          span.innerHTML = escapeHtml(currentValue) || '<em>Unknown</em>';
+          showNotification('Failed to update: ' + (result.error || 'Unknown error'), 'error');
+        }
+      } catch (error) {
+        span.innerHTML = escapeHtml(currentValue) || '<em>Unknown</em>';
+        showNotification('Error updating: ' + error.message, 'error');
+      }
     }
+
+    requestAnimationFrame(() => span.focus());
   };
 
   input.addEventListener('blur', finishEdit);
@@ -231,6 +312,7 @@ function handleEditStart(e) {
       input.blur();
     } else if (e.key === 'Escape') {
       span.innerHTML = escapeHtml(currentValue) || '<em>Unknown</em>';
+      requestAnimationFrame(() => span.focus());
     }
   });
 }
@@ -250,4 +332,46 @@ function escapeHtml(text) {
   const div = document.createElement('div');
   div.textContent = text;
   return div.innerHTML;
+}
+
+function sanitizeUrl(url) {
+  if (!url) return '#';
+  try {
+    const parsed = new URL(url.trim());
+    if (!['http:', 'https:'].includes(parsed.protocol)) {
+      return '#';
+    }
+    return escapeHtml(url);
+  } catch {
+    return '#';
+  }
+}
+
+function isValidHttpUrl(url) {
+  try {
+    const parsed = new URL(url);
+    return ['http:', 'https:'].includes(parsed.protocol);
+  } catch {
+    return false;
+  }
+}
+
+function showNotification(message, type = 'info') {
+  const existing = document.querySelector('.notification');
+  if (existing) existing.remove();
+
+  const notification = document.createElement('div');
+  notification.className = `notification ${type}`;
+  notification.textContent = message;
+  notification.setAttribute('role', 'alert');
+  notification.setAttribute('aria-live', 'polite');
+
+  document.body.appendChild(notification);
+
+  setTimeout(() => notification.classList.add('show'), 10);
+
+  setTimeout(() => {
+    notification.classList.remove('show');
+    setTimeout(() => notification.remove(), 300);
+  }, 3000);
 }

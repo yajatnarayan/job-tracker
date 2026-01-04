@@ -1,10 +1,10 @@
 const cheerio = require('cheerio');
 
 async function scrapeJobPage(url) {
-  try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 10000);
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 10000);
 
+  try {
     const response = await fetch(url, {
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
@@ -13,8 +13,6 @@ async function scrapeJobPage(url) {
       },
       signal: controller.signal
     });
-
-    clearTimeout(timeoutId);
 
     if (!response.ok) {
       console.error(`Failed to fetch: ${response.status}`);
@@ -121,6 +119,8 @@ async function scrapeJobPage(url) {
   } catch (error) {
     console.error('Scraping error:', error.message);
     return { url, company: null, title: null, location: null };
+  } finally {
+    clearTimeout(timeoutId);
   }
 }
 

@@ -8,7 +8,9 @@
       "Bash(taskkill:*)",
       "Bash(timeout /t 2 /nobreak)",
       "Bash(powershell -Command \"Get-Process -Name ''electron*'' -ErrorAction SilentlyContinue | Stop-Process -Force; Start-Sleep 2\")",
-      "Bash(git reset:*)"
+      "Bash(git reset:*)",
+      "Bash(cat:*)",
+      "WebFetch(domain:github.com)"
     ]
   }
 }

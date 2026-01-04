@@ -33,10 +33,13 @@ app.whenReady().then(() => {
 });
 
 app.on('window-all-closed', () => {
-  db.closeDb();
   if (process.platform !== 'darwin') {
     app.quit();
   }
+});
+
+app.on('before-quit', () => {
+  db.closeDb();
 });
 
 // IPC Handlers
@@ -68,9 +71,18 @@ ipcMain.handle('get-all-jobs', async () => {
   }
 });
 
+function validateId(id) {
+  const parsed = parseInt(id);
+  if (isNaN(parsed) || parsed <= 0) {
+    throw new Error('Invalid job ID');
+  }
+  return parsed;
+}
+
 ipcMain.handle('update-status', async (event, id, status) => {
   try {
-    db.updateStatus(id, status);
+    const validId = validateId(id);
+    db.updateStatus(validId, status);
     return { success: true };
   } catch (error) {
     return { success: false, error: error.message };
@@ -79,7 +91,8 @@ ipcMain.handle('update-status', async (event, id, status) => {
 
 ipcMain.handle('update-job', async (event, id, updates) => {
   try {
-    db.updateJob(id, updates);
+    const validId = validateId(id);
+    db.updateJob(validId, updates);
     return { success: true };
   } catch (error) {
     return { success: false, error: error.message };
@@ -88,7 +101,8 @@ ipcMain.handle('update-job', async (event, id, updates) => {
 
 ipcMain.handle('delete-job', async (event, id) => {
   try {
-    db.deleteJob(id);
+    const validId = validateId(id);
+    db.deleteJob(validId);
     return { success: true };
   } catch (error) {
     return { success: false, error: error.message };

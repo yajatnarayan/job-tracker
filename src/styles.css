@@ -278,6 +278,67 @@ header h1 {
   display: none;
 }
 
+/* Notifications */
+.notification {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  padding: 12px 20px;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  opacity: 0;
+  transform: translateY(20px);
+  transition: all 0.3s ease;
+  z-index: 1000;
+  max-width: 350px;
+}
+
+.notification.show {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.notification.success {
+  background: #00ff88;
+  color: #1a1a2e;
+}
+
+.notification.error {
+  background: #ff6b6b;
+  color: #fff;
+}
+
+.notification.info {
+  background: #00d4ff;
+  color: #1a1a2e;
+}
+
+/* Accessibility */
+.editable:focus {
+  outline: 2px solid #00d4ff;
+  outline-offset: 2px;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  border: 0;
+}
+
+/* Focus styles for interactive elements */
+button:focus,
+select:focus,
+a:focus {
+  outline: 2px solid #00d4ff;
+  outline-offset: 2px;
+}
+
 /* Responsive */
 @media (max-width: 800px) {
   .manual-fields.show {
@@ -287,5 +348,11 @@ header h1 {
   #jobs-table th:nth-child(3),
   #jobs-table td:nth-child(3) {
     display: none;
+  }
+
+  .notification {
+    right: 10px;
+    left: 10px;
+    max-width: none;
   }
 }
