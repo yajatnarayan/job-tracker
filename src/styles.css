@@ -1,0 +1,291 @@
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+  background: #1a1a2e;
+  color: #eee;
+  min-height: 100vh;
+}
+
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+header {
+  text-align: center;
+  margin-bottom: 30px;
+}
+
+header h1 {
+  color: #00d4ff;
+  font-size: 2rem;
+}
+
+/* Add Job Section */
+.add-job-section {
+  background: #16213e;
+  padding: 20px;
+  border-radius: 10px;
+  margin-bottom: 20px;
+}
+
+.add-job-section h2 {
+  margin-bottom: 15px;
+  font-size: 1.2rem;
+  color: #aaa;
+}
+
+.form-row {
+  display: flex;
+  gap: 10px;
+}
+
+#job-url {
+  flex: 1;
+  padding: 12px 15px;
+  border: 2px solid #0f3460;
+  border-radius: 6px;
+  background: #0f3460;
+  color: #fff;
+  font-size: 1rem;
+}
+
+#job-url:focus {
+  outline: none;
+  border-color: #00d4ff;
+}
+
+#add-btn {
+  padding: 12px 25px;
+  background: #00d4ff;
+  color: #1a1a2e;
+  border: none;
+  border-radius: 6px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+#add-btn:hover {
+  background: #00b8e6;
+}
+
+#add-btn:disabled {
+  background: #555;
+  cursor: not-allowed;
+}
+
+.scrape-status {
+  margin-top: 10px;
+  font-size: 0.9rem;
+  min-height: 20px;
+}
+
+.scrape-status.loading {
+  color: #ffd700;
+}
+
+.scrape-status.success {
+  color: #00ff88;
+}
+
+.scrape-status.error {
+  color: #ff6b6b;
+}
+
+.manual-fields {
+  display: none;
+  margin-top: 15px;
+  gap: 15px;
+}
+
+.manual-fields.show {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 5px;
+  color: #888;
+  font-size: 0.85rem;
+}
+
+.form-group input {
+  width: 100%;
+  padding: 10px;
+  border: 2px solid #0f3460;
+  border-radius: 6px;
+  background: #0f3460;
+  color: #fff;
+  font-size: 0.95rem;
+}
+
+.form-group input:focus {
+  outline: none;
+  border-color: #00d4ff;
+}
+
+/* Filter Section */
+.filter-section {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 15px;
+}
+
+.filter-section label {
+  color: #888;
+}
+
+#status-filter {
+  padding: 8px 12px;
+  border: 2px solid #0f3460;
+  border-radius: 6px;
+  background: #0f3460;
+  color: #fff;
+  font-size: 0.95rem;
+  cursor: pointer;
+}
+
+.job-count {
+  margin-left: auto;
+  color: #888;
+}
+
+/* Jobs Table */
+.jobs-section {
+  background: #16213e;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+#jobs-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+#jobs-table th,
+#jobs-table td {
+  padding: 15px;
+  text-align: left;
+  border-bottom: 1px solid #0f3460;
+}
+
+#jobs-table th {
+  background: #0f3460;
+  color: #00d4ff;
+  font-weight: 600;
+}
+
+#jobs-table tr:hover {
+  background: #1f3a6e;
+}
+
+#jobs-table td a {
+  color: #00d4ff;
+  text-decoration: none;
+}
+
+#jobs-table td a:hover {
+  text-decoration: underline;
+}
+
+/* Status Badges */
+.status-select {
+  padding: 6px 10px;
+  border: none;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.status-select.waiting {
+  background: #ffd700;
+  color: #1a1a2e;
+}
+
+.status-select.interviewing {
+  background: #00d4ff;
+  color: #1a1a2e;
+}
+
+.status-select.rejected {
+  background: #ff6b6b;
+  color: #fff;
+}
+
+/* Editable cells */
+.editable {
+  cursor: pointer;
+  padding: 5px;
+  border-radius: 4px;
+  transition: background 0.2s;
+}
+
+.editable:hover {
+  background: #0f3460;
+}
+
+.edit-input {
+  background: #0f3460;
+  border: 1px solid #00d4ff;
+  color: #fff;
+  padding: 5px;
+  border-radius: 4px;
+  width: 100%;
+}
+
+/* Delete Button */
+.delete-btn {
+  background: transparent;
+  border: 1px solid #ff6b6b;
+  color: #ff6b6b;
+  padding: 6px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  transition: all 0.2s;
+}
+
+.delete-btn:hover {
+  background: #ff6b6b;
+  color: #fff;
+}
+
+/* No Jobs Message */
+.no-jobs {
+  display: none;
+  text-align: center;
+  padding: 40px;
+  color: #666;
+}
+
+.no-jobs.show {
+  display: block;
+}
+
+/* Hide table when no jobs */
+#jobs-table.hidden {
+  display: none;
+}
+
+/* Responsive */
+@media (max-width: 800px) {
+  .manual-fields.show {
+    grid-template-columns: 1fr;
+  }
+
+  #jobs-table th:nth-child(3),
+  #jobs-table td:nth-child(3) {
+    display: none;
+  }
+}

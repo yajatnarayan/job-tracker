@@ -1,0 +1,21 @@
+{
+  "name": "job-tracker",
+  "version": "1.0.0",
+  "description": "Desktop app to track job applications",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "rebuild": "electron-rebuild -f -w better-sqlite3"
+  },
+  "keywords": ["job", "tracker", "electron"],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^28.0.0",
+    "electron-rebuild": "^3.2.9"
+  },
+  "dependencies": {
+    "better-sqlite3": "^9.2.2",
+    "cheerio": "1.0.0-rc.10"
+  }
+}
