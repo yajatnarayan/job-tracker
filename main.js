@@ -53,7 +53,7 @@ function createWindow() {
   mainWindow.loadFile('src/index.html');
 
   // Open DevTools in development
-  mainWindow.webContents.openDevTools();
+  // mainWindow.webContents.openDevTools();
 }
 
 app.whenReady().then(() => {

@@ -16,7 +16,8 @@
       "Bash(npx electron .)",
       "Bash(npx electron --version)",
       "Bash(node --version:*)",
-      "Skill(frontend-design)"
+      "Skill(frontend-design)",
+      "Bash(timeout /t 5 /nobreak)"
     ]
   }
 }

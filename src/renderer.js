@@ -107,10 +107,59 @@ function resetForm() {
 }
 
 function handleGridClick(e) {
-  if (e.target.classList.contains('delete-btn') || e.target.closest('.delete-btn')) {
+  const menuBtn = e.target.closest('.menu-btn');
+  const editBtn = e.target.closest('.edit-btn');
+  const deleteBtn = e.target.closest('.delete-btn');
+
+  if (menuBtn) {
+    e.stopPropagation();
+    toggleDropdown(menuBtn);
+    return;
+  }
+
+  if (editBtn) {
+    e.stopPropagation();
+    const id = parseInt(editBtn.dataset.id);
+    const field = editBtn.dataset.field;
+    closeAllDropdowns();
+    openEditModal(id, field);
+    return;
+  }
+
+  if (deleteBtn) {
     handleDelete(e);
+    return;
   }
 }
+
+function toggleDropdown(menuBtn) {
+  const jobActions = menuBtn.closest('.job-actions');
+  const dropdown = jobActions.querySelector('.dropdown-menu');
+  const isOpen = dropdown.classList.contains('show');
+
+  closeAllDropdowns();
+
+  if (!isOpen) {
+    dropdown.classList.add('show');
+    menuBtn.classList.add('active');
+  }
+}
+
+function closeAllDropdowns() {
+  document.querySelectorAll('.dropdown-menu.show').forEach(menu => {
+    menu.classList.remove('show');
+  });
+  document.querySelectorAll('.menu-btn.active').forEach(btn => {
+    btn.classList.remove('active');
+  });
+}
+
+// Close dropdowns when clicking outside
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('.job-actions')) {
+    closeAllDropdowns();
+  }
+});
 
 function handleGridChange(e) {
   if (e.target.classList.contains('status-select')) {
@@ -168,7 +217,7 @@ async function handleAddJob(e) {
       company: company || null,
       title: title || null,
       location: location || null,
-      applied_date: new Date().toISOString().split('T')[0],
+      applied_date: getLocalDateString(),
       status: 'waiting'
     };
 
@@ -269,7 +318,7 @@ function createJobCard(job, index) {
 
   card.innerHTML = `
     <div class="job-status-bar"></div>
-    <span class="job-company editable" data-field="company" data-id="${job.id}" tabindex="0" role="button" aria-label="Edit company name" title="${companyName}">
+    <span class="job-company" data-field="company" data-id="${job.id}" title="${companyName}">
       ${companyName}
     </span>
     <h3 class="job-title">
@@ -277,7 +326,7 @@ function createJobCard(job, index) {
         ${jobTitle}
       </a>
     </h3>
-    <span class="job-location editable" data-field="location" data-id="${job.id}" tabindex="0" role="button" aria-label="Edit location" title="${jobLocation}">
+    <span class="job-location" data-field="location" data-id="${job.id}" title="${jobLocation}">
       ${jobLocation}
     </span>
     <span class="job-date">${appliedDate}</span>
@@ -286,12 +335,46 @@ function createJobCard(job, index) {
       <option value="interviewing" ${job.status === 'interviewing' ? 'selected' : ''}>Interviewing</option>
       <option value="rejected" ${job.status === 'rejected' ? 'selected' : ''}>Rejected</option>
     </select>
-    <button class="delete-btn" data-id="${job.id}" aria-label="Delete application" title="Delete">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <polyline points="3 6 5 6 21 6"/>
-        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
-      </svg>
-    </button>
+    <div class="job-actions">
+      <button class="menu-btn" data-id="${job.id}" aria-label="More options" title="More options">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+          <circle cx="12" cy="5" r="2"/>
+          <circle cx="12" cy="12" r="2"/>
+          <circle cx="12" cy="19" r="2"/>
+        </svg>
+      </button>
+      <div class="dropdown-menu" data-id="${job.id}">
+        <button class="dropdown-item edit-btn" data-id="${job.id}" data-field="company">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+          </svg>
+          Edit Company
+        </button>
+        <button class="dropdown-item edit-btn" data-id="${job.id}" data-field="title">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+          </svg>
+          Edit Position
+        </button>
+        <button class="dropdown-item edit-btn" data-id="${job.id}" data-field="location">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+          </svg>
+          Edit Location
+        </button>
+        <div class="dropdown-divider"></div>
+        <button class="dropdown-item delete-btn danger" data-id="${job.id}">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="3 6 5 6 21 6"/>
+            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+          </svg>
+          Delete
+        </button>
+      </div>
+    </div>
   `;
 
   return card;
@@ -436,8 +519,128 @@ function handleEditStart(e) {
   });
 }
 
+function openEditModal(id, field) {
+  const job = allJobs.find(j => j.id === id);
+  if (!job) {
+    showNotification('Job not found', 'error');
+    return;
+  }
+
+  const fieldLabels = {
+    company: 'Company',
+    title: 'Position',
+    location: 'Location'
+  };
+
+  const currentValue = job[field] || '';
+  const label = fieldLabels[field] || field;
+
+  // Create edit modal
+  const editOverlay = document.createElement('div');
+  editOverlay.className = 'modal-overlay show';
+  editOverlay.id = 'edit-modal-overlay';
+
+  editOverlay.innerHTML = `
+    <div class="modal edit-modal">
+      <div class="modal-header">
+        <h2 class="modal-title">Edit ${label}</h2>
+        <button class="modal-close" id="close-edit-modal">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"/>
+            <line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
+      </div>
+      <form id="edit-field-form" class="modal-form">
+        <div class="form-group">
+          <label for="edit-field-input">${label}</label>
+          <input type="text" id="edit-field-input" value="${escapeHtml(currentValue)}" placeholder="Enter ${label.toLowerCase()}">
+        </div>
+        <div class="form-actions">
+          <button type="button" class="btn-secondary" id="cancel-edit-btn">Cancel</button>
+          <button type="submit" class="btn-primary">Save Changes</button>
+        </div>
+      </form>
+    </div>
+  `;
+
+  document.body.appendChild(editOverlay);
+  document.body.style.overflow = 'hidden';
+
+  const input = editOverlay.querySelector('#edit-field-input');
+  const form = editOverlay.querySelector('#edit-field-form');
+  const closeBtn = editOverlay.querySelector('#close-edit-modal');
+  const cancelBtn = editOverlay.querySelector('#cancel-edit-btn');
+
+  setTimeout(() => input.focus(), 100);
+
+  const closeEditModal = () => {
+    editOverlay.remove();
+    document.body.style.overflow = '';
+  };
+
+  closeBtn.addEventListener('click', closeEditModal);
+  cancelBtn.addEventListener('click', closeEditModal);
+  editOverlay.addEventListener('click', (e) => {
+    if (e.target === editOverlay) closeEditModal();
+  });
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const newValue = input.value.trim();
+
+    if (newValue !== currentValue) {
+      try {
+        const result = await window.api.updateJob(id, { [field]: newValue || null });
+        if (result.success) {
+          job[field] = newValue || null;
+          showNotification(`${label} updated successfully`, 'success');
+          renderJobs();
+        } else {
+          showNotification('Failed to update: ' + (result.error || 'Unknown error'), 'error');
+        }
+      } catch (error) {
+        showNotification('Error updating: ' + error.message, 'error');
+      }
+    }
+
+    closeEditModal();
+  });
+
+  // Handle Escape key
+  const handleEscape = (e) => {
+    if (e.key === 'Escape') {
+      closeEditModal();
+      document.removeEventListener('keydown', handleEscape);
+    }
+  };
+  document.addEventListener('keydown', handleEscape);
+}
+
+function getLocalDateString() {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
 function formatDate(dateStr) {
   if (!dateStr) return '';
+  // Parse YYYY-MM-DD format manually to avoid timezone issues
+  const parts = dateStr.split('-');
+  if (parts.length === 3) {
+    const year = parseInt(parts[0], 10);
+    const month = parseInt(parts[1], 10) - 1; // months are 0-indexed
+    const day = parseInt(parts[2], 10);
+    const date = new Date(year, month, day);
+    return date.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric'
+    });
+  }
+  // Fallback for other formats
   const date = new Date(dateStr);
   return date.toLocaleDateString('en-US', {
     month: 'short',
