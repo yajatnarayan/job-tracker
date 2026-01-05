@@ -7,7 +7,11 @@
     "start": "electron .",
     "rebuild": "electron-rebuild -f -w better-sqlite3"
   },
-  "keywords": ["job", "tracker", "electron"],
+  "keywords": [
+    "job",
+    "tracker",
+    "electron"
+  ],
   "author": "",
   "license": "MIT",
   "devDependencies": {
@@ -15,7 +19,7 @@
     "electron-rebuild": "^3.2.9"
   },
   "dependencies": {
-    "better-sqlite3": "^9.2.2",
+    "better-sqlite3": "^9.6.0",
     "cheerio": "1.0.0-rc.10"
   }
 }

@@ -10,7 +10,13 @@
       "Bash(powershell -Command \"Get-Process -Name ''electron*'' -ErrorAction SilentlyContinue | Stop-Process -Force; Start-Sleep 2\")",
       "Bash(git reset:*)",
       "Bash(cat:*)",
-      "WebFetch(domain:github.com)"
+      "WebFetch(domain:github.com)",
+      "Bash(npm rebuild:*)",
+      "Bash(npx electron-rebuild)",
+      "Bash(npx electron .)",
+      "Bash(npx electron --version)",
+      "Bash(node --version:*)",
+      "Skill(frontend-design)"
     ]
   }
 }

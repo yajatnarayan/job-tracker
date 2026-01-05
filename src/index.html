@@ -3,71 +3,169 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'">
-  <title>Job Application Tracker</title>
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com">
+  <title>Job Tracker</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <div class="container">
-    <header>
-      <h1>Job Application Tracker</h1>
-    </header>
-
-    <section class="add-job-section">
-      <h2>Add New Application</h2>
-      <form id="add-job-form">
-        <div class="form-row">
-          <input type="url" id="job-url" placeholder="Paste job listing URL..." required>
-          <button type="submit" id="add-btn">Add Job</button>
+  <div class="app">
+    <aside class="sidebar">
+      <div class="logo">
+        <span class="logo-mark"></span>
+        <span class="logo-text">Tracker</span>
+      </div>
+      <nav class="nav">
+        <a href="#" class="nav-item active">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="3" width="7" height="7" rx="1"/>
+            <rect x="14" y="3" width="7" height="7" rx="1"/>
+            <rect x="3" y="14" width="7" height="7" rx="1"/>
+            <rect x="14" y="14" width="7" height="7" rx="1"/>
+          </svg>
+          <span>All Jobs</span>
+        </a>
+        <a href="#" class="nav-item" data-filter="waiting">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"/>
+            <path d="M12 6v6l4 2"/>
+          </svg>
+          <span>Waiting</span>
+        </a>
+        <a href="#" class="nav-item" data-filter="interviewing">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+            <polyline points="22 4 12 14.01 9 11.01"/>
+          </svg>
+          <span>Interviewing</span>
+        </a>
+        <a href="#" class="nav-item" data-filter="rejected">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"/>
+            <line x1="15" y1="9" x2="9" y2="15"/>
+            <line x1="9" y1="9" x2="15" y2="15"/>
+          </svg>
+          <span>Rejected</span>
+        </a>
+      </nav>
+      <div class="sidebar-stats">
+        <div class="stat">
+          <span class="stat-value" id="total-count">0</span>
+          <span class="stat-label">Total</span>
         </div>
-        <div id="scrape-status" class="scrape-status"></div>
+        <div class="stat">
+          <span class="stat-value stat-active" id="active-count">0</span>
+          <span class="stat-label">Active</span>
+        </div>
+      </div>
+    </aside>
 
-        <div class="manual-fields" id="manual-fields">
+    <main class="main">
+      <header class="header">
+        <div class="header-content">
+          <h1 class="page-title">Your <em>Applications</em></h1>
+          <p class="page-subtitle">Track your journey to the perfect role</p>
+        </div>
+        <div class="header-actions">
+          <button class="btn-add" id="open-add-modal">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <line x1="12" y1="5" x2="12" y2="19"/>
+              <line x1="5" y1="12" x2="19" y2="12"/>
+            </svg>
+            Add Application
+          </button>
+        </div>
+      </header>
+
+      <section class="jobs-grid" id="jobs-grid">
+        <!-- Job cards will be inserted here -->
+      </section>
+
+      <div class="empty-state" id="empty-state">
+        <div class="empty-illustration">
+          <svg width="120" height="120" viewBox="0 0 120 120" fill="none">
+            <circle cx="60" cy="60" r="50" stroke="var(--border)" stroke-width="2" stroke-dasharray="8 8"/>
+            <rect x="40" y="35" width="40" height="50" rx="4" stroke="var(--border)" stroke-width="2"/>
+            <line x1="48" y1="50" x2="72" y2="50" stroke="var(--border)" stroke-width="2"/>
+            <line x1="48" y1="60" x2="72" y2="60" stroke="var(--border)" stroke-width="2"/>
+            <line x1="48" y1="70" x2="62" y2="70" stroke="var(--border)" stroke-width="2"/>
+          </svg>
+        </div>
+        <h2 class="empty-title">No applications yet</h2>
+        <p class="empty-text">Start tracking your job search by adding your first application</p>
+        <button class="btn-add" id="empty-add-btn">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <line x1="12" y1="5" x2="12" y2="19"/>
+            <line x1="5" y1="12" x2="19" y2="12"/>
+          </svg>
+          Add Your First Job
+        </button>
+      </div>
+    </main>
+  </div>
+
+  <!-- Add Job Modal -->
+  <div class="modal-overlay" id="modal-overlay">
+    <div class="modal" id="add-modal">
+      <div class="modal-header">
+        <h2 class="modal-title">New Application</h2>
+        <button class="modal-close" id="close-modal">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"/>
+            <line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
+      </div>
+      <form id="add-job-form" class="modal-form">
+        <div class="form-group form-group-url">
+          <label for="job-url">Job URL</label>
+          <div class="url-input-wrapper">
+            <input type="url" id="job-url" placeholder="https://company.com/careers/job-title" required>
+            <div class="url-loader" id="url-loader">
+              <div class="spinner"></div>
+            </div>
+          </div>
+          <div id="scrape-status" class="scrape-status"></div>
+        </div>
+
+        <div class="form-divider">
+          <span>Job Details</span>
+        </div>
+
+        <div class="form-row">
           <div class="form-group">
             <label for="company">Company</label>
-            <input type="text" id="company" placeholder="Company name">
+            <input type="text" id="company" placeholder="Acme Inc.">
           </div>
           <div class="form-group">
-            <label for="title">Job Title</label>
-            <input type="text" id="title" placeholder="Job title">
-          </div>
-          <div class="form-group">
-            <label for="location">Location</label>
-            <input type="text" id="location" placeholder="Location">
+            <label for="title">Position</label>
+            <input type="text" id="title" placeholder="Senior Developer">
           </div>
         </div>
+
+        <div class="form-group">
+          <label for="location">Location</label>
+          <input type="text" id="location" placeholder="San Francisco, CA / Remote">
+        </div>
+
+        <div class="form-actions">
+          <button type="button" class="btn-secondary" id="cancel-btn">Cancel</button>
+          <button type="submit" class="btn-primary" id="add-btn">
+            <span class="btn-text">Add Application</span>
+            <svg class="btn-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <line x1="5" y1="12" x2="19" y2="12"/>
+              <polyline points="12 5 19 12 12 19"/>
+            </svg>
+          </button>
+        </div>
       </form>
-    </section>
-
-    <section class="filter-section" role="search" aria-label="Filter applications">
-      <label for="status-filter">Filter by status:</label>
-      <select id="status-filter" aria-controls="jobs-table">
-        <option value="all">All</option>
-        <option value="waiting">Waiting</option>
-        <option value="interviewing">Interviewing</option>
-        <option value="rejected">Rejected</option>
-      </select>
-      <span id="job-count" class="job-count" role="status" aria-live="polite"></span>
-    </section>
-
-    <section class="jobs-section" aria-label="Job applications list">
-      <table id="jobs-table" aria-label="Job applications">
-        <thead>
-          <tr>
-            <th scope="col">Company</th>
-            <th scope="col">Title</th>
-            <th scope="col">Location</th>
-            <th scope="col">Applied</th>
-            <th scope="col">Status</th>
-            <th scope="col">Actions</th>
-          </tr>
-        </thead>
-        <tbody id="jobs-tbody">
-        </tbody>
-      </table>
-      <div id="no-jobs" class="no-jobs" role="status">No job applications yet. Add one above!</div>
-    </section>
+    </div>
   </div>
+
+  <!-- Toast Notifications -->
+  <div class="toast-container" id="toast-container"></div>
 
   <script src="renderer.js"></script>
 </body>

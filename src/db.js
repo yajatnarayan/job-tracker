@@ -1,16 +1,75 @@
-const Database = require('better-sqlite3');
-const path = require('path');
-
 const VALID_STATUSES = ['waiting', 'rejected', 'interviewing'];
 const ALLOWED_UPDATE_FIELDS = ['company', 'title', 'location', 'status'];
 
+let Database = null;
 let db = null;
 let dbInitialized = false;
+let dbPath = null;
+
+class NativeModuleError extends Error {
+  constructor(message, originalError) {
+    super(message);
+    this.name = 'NativeModuleError';
+    this.originalError = originalError;
+  }
+}
+
+function isNativeModuleVersionError(error) {
+  return error && error.message &&
+    error.message.includes('NODE_MODULE_VERSION') &&
+    error.message.includes('was compiled against a different Node.js version');
+}
+
+function loadDatabase() {
+  if (Database) return Database;
+
+  try {
+    console.log('Loading better-sqlite3...');
+    Database = require('better-sqlite3');
+    console.log('better-sqlite3 loaded successfully');
+    return Database;
+  } catch (error) {
+    console.error('ERROR loading better-sqlite3:', error.message);
+    console.error('Full error stack:', error.stack);
+    if (isNativeModuleVersionError(error)) {
+      throw new NativeModuleError(
+        'Native module version mismatch: better-sqlite3 was compiled for a different Node.js version. ' +
+        'Please run "npm rebuild better-sqlite3" in the project directory to fix this.',
+        error
+      );
+    }
+    throw error;
+  }
+}
+
+function initDb(path) {
+  dbPath = path;
+}
 
 function getDb() {
+  console.log('getDb() called, dbPath:', dbPath);
+  if (!dbPath) {
+    throw new Error('Database path not set. Call initDb() first.');
+  }
   if (!db) {
-    const dbPath = path.join(__dirname, '..', 'jobs.db');
-    db = new Database(dbPath);
+    try {
+      console.log('Creating new database connection...');
+      const Db = loadDatabase();
+      console.log('Creating database instance at:', dbPath);
+      db = new Db(dbPath);
+      console.log('Database instance created successfully');
+    } catch (error) {
+      console.error('ERROR creating database:', error.message);
+      console.error('Full error stack:', error.stack);
+      if (isNativeModuleVersionError(error)) {
+        throw new NativeModuleError(
+          'Native module version mismatch: better-sqlite3 was compiled for a different Node.js version. ' +
+          'Please run "npm rebuild better-sqlite3" in the project directory to fix this.',
+          error
+        );
+      }
+      throw error;
+    }
   }
   if (!dbInitialized) {
     dbInitialized = true;
@@ -164,11 +223,13 @@ function closeDb() {
 }
 
 module.exports = {
+  initDb,
   getDb,
   addJob,
   getAllJobs,
   updateStatus,
   updateJob,
   deleteJob,
-  closeDb
+  closeDb,
+  NativeModuleError
 };

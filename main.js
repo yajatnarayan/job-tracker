@@ -1,7 +1,41 @@
-const { app, BrowserWindow, ipcMain } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog } = require('electron');
 const path = require('path');
-const db = require('./src/db');
-const { scrapeJobPage } = require('./scraper/scraper');
+
+// Log all uncaught errors
+process.on('uncaughtException', (error) => {
+  console.error('UNCAUGHT EXCEPTION:', error);
+});
+
+let db;
+try {
+  db = require('./src/db');
+  console.log('Database module loaded successfully');
+} catch (error) {
+  console.error('FAILED TO LOAD DATABASE MODULE:', error.message);
+  console.error('Full error:', error);
+}
+
+let scrapeJobPage;
+try {
+  const scraper = require('./scraper/scraper');
+  scrapeJobPage = scraper.scrapeJobPage;
+  console.log('Scraper module loaded successfully');
+} catch (error) {
+  console.error('FAILED TO LOAD SCRAPER MODULE:', error.message);
+  console.error('Full error:', error);
+}
+
+function handleNativeModuleError(error) {
+  if (error instanceof db.NativeModuleError) {
+    dialog.showErrorBox(
+      'Native Module Error',
+      error.message + '\n\nThe application will now close.'
+    );
+    app.quit();
+    return true;
+  }
+  return false;
+}
 
 let mainWindow;
 
@@ -19,10 +53,14 @@ function createWindow() {
   mainWindow.loadFile('src/index.html');
 
   // Open DevTools in development
-  // mainWindow.webContents.openDevTools();
+  mainWindow.webContents.openDevTools();
 }
 
 app.whenReady().then(() => {
+  // Initialize database in persistent userData directory
+  const dbPath = path.join(app.getPath('userData'), 'jobs.db');
+  db.initDb(dbPath);
+
   createWindow();
 
   app.on('activate', () => {
@@ -58,15 +96,24 @@ ipcMain.handle('add-job', async (event, jobData) => {
     const id = db.addJob(jobData);
     return { success: true, id };
   } catch (error) {
+    if (handleNativeModuleError(error)) {
+      return { success: false, error: 'Application closing due to native module error.' };
+    }
     return { success: false, error: error.message };
   }
 });
 
 ipcMain.handle('get-all-jobs', async () => {
   try {
+    console.log('get-all-jobs handler called');
     const jobs = db.getAllJobs();
+    console.log('Retrieved jobs from database:', jobs);
     return { success: true, data: jobs };
   } catch (error) {
+    console.error('Error in get-all-jobs handler:', error);
+    if (handleNativeModuleError(error)) {
+      return { success: false, error: 'Application closing due to native module error.' };
+    }
     return { success: false, error: error.message };
   }
 });
@@ -85,6 +132,9 @@ ipcMain.handle('update-status', async (event, id, status) => {
     db.updateStatus(validId, status);
     return { success: true };
   } catch (error) {
+    if (handleNativeModuleError(error)) {
+      return { success: false, error: 'Application closing due to native module error.' };
+    }
     return { success: false, error: error.message };
   }
 });
@@ -95,6 +145,9 @@ ipcMain.handle('update-job', async (event, id, updates) => {
     db.updateJob(validId, updates);
     return { success: true };
   } catch (error) {
+    if (handleNativeModuleError(error)) {
+      return { success: false, error: 'Application closing due to native module error.' };
+    }
     return { success: false, error: error.message };
   }
 });
@@ -105,6 +158,9 @@ ipcMain.handle('delete-job', async (event, id) => {
     db.deleteJob(validId);
     return { success: true };
   } catch (error) {
+    if (handleNativeModuleError(error)) {
+      return { success: false, error: 'Application closing due to native module error.' };
+    }
     return { success: false, error: error.message };
   }
 });
