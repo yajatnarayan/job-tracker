@@ -99,6 +99,56 @@ async function scrapeJobPage(url) {
       }
     }
 
+    // Siemens specific
+    if (url.includes('jobs.siemens.com')) {
+      // Try to extract from twigConfig JavaScript object
+      const scriptContent = html;
+      const jobTitleMatch = scriptContent.match(/"jobTitle"\s*:\s*"([^"]+)"/);
+      const jobIdMatch = scriptContent.match(/"jobId"\s*:\s*"?(\d+)"?/);
+
+      if (jobTitleMatch && !jobInfo.title) {
+        jobInfo.title = jobTitleMatch[1];
+      }
+
+      // Set company to Siemens if not found
+      if (!jobInfo.company) {
+        // Look for organization in the page
+        const orgMatch = scriptContent.match(/"organization"\s*:\s*"([^"]+)"/);
+        if (orgMatch) {
+          jobInfo.company = 'Siemens - ' + orgMatch[1];
+        } else {
+          jobInfo.company = 'Siemens';
+        }
+      }
+
+      // Try to find location from page content
+      if (!jobInfo.location) {
+        // Look for location patterns in the HTML
+        const locationMatch = scriptContent.match(/location['"]\s*:\s*['"]([^'"]+)['"]/i) ||
+                              scriptContent.match(/"addressLocality"\s*:\s*"([^"]+)"/) ||
+                              scriptContent.match(/"addressCountry"\s*:\s*"([^"]+)"/);
+        if (locationMatch) {
+          jobInfo.location = locationMatch[1];
+        }
+
+        // Try common Siemens location selectors
+        if (!jobInfo.location) {
+          const locationEl = $('.job-location').text().trim() ||
+                             $('[class*="location"]').first().text().trim() ||
+                             $('span:contains("Location")').next().text().trim();
+          if (locationEl) {
+            jobInfo.location = locationEl;
+          }
+        }
+      }
+
+      // Try to get title from h1 or h3 if not found
+      if (!jobInfo.title) {
+        jobInfo.title = $('h1').first().text().trim() ||
+                        $('h3').first().text().trim();
+      }
+    }
+
     // Generic fallbacks
     if (!jobInfo.location) {
       // Look for common location patterns in meta tags
