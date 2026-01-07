@@ -1,6 +1,34 @@
 let allJobs = [];
 let currentFilter = 'all';
 
+// Status display names and colors
+const STATUS_CONFIG = {
+  applied: { label: 'Applied', color: 'applied' },
+  interview: { label: 'Interview', color: 'interview' },
+  interviewing: { label: 'Interviewing', color: 'interviewing' },
+  waiting: { label: 'Waiting', color: 'waiting' },
+  offer: { label: 'Offer', color: 'offer' },
+  accepted: { label: 'Accepted', color: 'accepted' },
+  rejected: { label: 'Rejected', color: 'rejected' },
+  withdrawn: { label: 'Withdrawn', color: 'withdrawn' }
+};
+
+// State transition rules - defines valid next states from each state
+const STATE_TRANSITIONS = {
+  applied: ['interview', 'rejected', 'withdrawn'],
+  interview: ['interviewing', 'rejected', 'withdrawn'],
+  interviewing: ['waiting', 'offer', 'rejected', 'withdrawn'],
+  waiting: ['interview', 'interviewing', 'offer', 'rejected', 'withdrawn'],  // allow going back to interview for follow-ups
+  offer: ['accepted', 'rejected', 'withdrawn'],
+  accepted: [],  // end state
+  rejected: [],  // end state
+  withdrawn: []  // end state
+};
+
+function getNextStates(currentStatus) {
+  return STATE_TRANSITIONS[currentStatus] || [];
+}
+
 // DOM Elements
 const addJobForm = document.getElementById('add-job-form');
 const jobUrlInput = document.getElementById('job-url');
@@ -110,9 +138,28 @@ function handleGridClick(e) {
   const menuBtn = e.target.closest('.menu-btn');
   const editBtn = e.target.closest('.edit-btn');
   const deleteBtn = e.target.closest('.delete-btn');
+  const statusBadgeBtn = e.target.closest('.status-badge-btn');
+  const statusDropdownItem = e.target.closest('.status-dropdown-item');
+
+  if (statusBadgeBtn && !statusBadgeBtn.disabled) {
+    e.stopPropagation();
+    toggleStatusDropdown(statusBadgeBtn);
+    return;
+  }
+
+  if (statusDropdownItem) {
+    e.stopPropagation();
+    const wrapper = statusDropdownItem.closest('.status-dropdown-wrapper');
+    const id = parseInt(wrapper.dataset.id);
+    const newStatus = statusDropdownItem.dataset.status;
+    closeAllStatusDropdowns();
+    handleStatusUpdate(id, newStatus);
+    return;
+  }
 
   if (menuBtn) {
     e.stopPropagation();
+    closeAllStatusDropdowns();
     toggleDropdown(menuBtn);
     return;
   }
@@ -122,6 +169,7 @@ function handleGridClick(e) {
     const id = parseInt(editBtn.dataset.id);
     const field = editBtn.dataset.field;
     closeAllDropdowns();
+    closeAllStatusDropdowns();
     openEditModal(id, field);
     return;
   }
@@ -145,6 +193,27 @@ function toggleDropdown(menuBtn) {
   }
 }
 
+function toggleStatusDropdown(badgeBtn) {
+  const wrapper = badgeBtn.closest('.status-dropdown-wrapper');
+  const dropdown = wrapper.querySelector('.status-dropdown');
+  if (!dropdown) return;
+
+  const isOpen = wrapper.classList.contains('open');
+
+  closeAllStatusDropdowns();
+  closeAllDropdowns();
+
+  if (!isOpen) {
+    wrapper.classList.add('open');
+  }
+}
+
+function closeAllStatusDropdowns() {
+  document.querySelectorAll('.status-dropdown-wrapper.open').forEach(wrapper => {
+    wrapper.classList.remove('open');
+  });
+}
+
 function closeAllDropdowns() {
   document.querySelectorAll('.dropdown-menu.show').forEach(menu => {
     menu.classList.remove('show');
@@ -158,6 +227,9 @@ function closeAllDropdowns() {
 document.addEventListener('click', (e) => {
   if (!e.target.closest('.job-actions')) {
     closeAllDropdowns();
+  }
+  if (!e.target.closest('.status-dropdown-wrapper')) {
+    closeAllStatusDropdowns();
   }
 });
 
@@ -218,14 +290,24 @@ async function handleAddJob(e) {
       title: title || null,
       location: location || null,
       applied_date: getLocalDateString(),
-      status: 'waiting'
+      status: 'applied'
     };
 
     const addResult = await window.api.addJob(jobData);
     if (addResult.success) {
       showNotification('Application added successfully', 'success');
       closeModal();
-      loadJobs();
+      await loadJobs();
+
+      // Check for missing fields and prompt user to fill them
+      const missingFields = [];
+      if (!company) missingFields.push('company');
+      if (!title) missingFields.push('title');
+      if (!location) missingFields.push('location');
+
+      if (missingFields.length > 0) {
+        openMissingFieldsModal(addResult.id, missingFields);
+      }
     } else {
       scrapeStatus.textContent = 'Error adding job: ' + addResult.error;
       scrapeStatus.className = 'scrape-status error';
@@ -265,7 +347,8 @@ async function loadJobs() {
 
 function updateStats() {
   const total = allJobs.length;
-  const active = allJobs.filter(j => j.status !== 'rejected').length;
+  const terminalStates = ['accepted', 'rejected', 'withdrawn'];
+  const active = allJobs.filter(j => !terminalStates.includes(j.status)).length;
 
   totalCount.textContent = total;
   activeCount.textContent = active;
@@ -315,6 +398,15 @@ function createJobCard(job, index) {
   const jobTitle = escapeHtml(job.title) || 'View Listing';
   const jobLocation = escapeHtml(job.location) || 'Not specified';
   const appliedDate = formatDate(job.applied_date);
+  const statusConfig = STATUS_CONFIG[job.status] || STATUS_CONFIG.applied;
+  const nextStates = getNextStates(job.status);
+  const isEndState = nextStates.length === 0;
+
+  // Build dropdown options HTML
+  const dropdownOptionsHtml = nextStates.map(status => {
+    const config = STATUS_CONFIG[status];
+    return `<button class="status-dropdown-item status-${status}" data-status="${status}">${config.label}</button>`;
+  }).join('');
 
   card.innerHTML = `
     <div class="job-status-bar"></div>
@@ -330,11 +422,13 @@ function createJobCard(job, index) {
       ${jobLocation}
     </span>
     <span class="job-date">${appliedDate}</span>
-    <select class="status-select ${job.status}" data-id="${job.id}" aria-label="Update status">
-      <option value="waiting" ${job.status === 'waiting' ? 'selected' : ''}>Waiting</option>
-      <option value="interviewing" ${job.status === 'interviewing' ? 'selected' : ''}>Interviewing</option>
-      <option value="rejected" ${job.status === 'rejected' ? 'selected' : ''}>Rejected</option>
-    </select>
+    <div class="status-dropdown-wrapper ${isEndState ? 'end-state' : ''}" data-id="${job.id}">
+      <button class="status-badge-btn status-${job.status}" data-id="${job.id}" aria-label="Change status" ${isEndState ? 'disabled' : ''}>
+        ${statusConfig.label}
+        ${!isEndState ? `<svg class="dropdown-arrow" width="8" height="5" viewBox="0 0 8 5" fill="none"><path d="M1 1L4 4L7 1" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>` : ''}
+      </button>
+      ${!isEndState ? `<div class="status-dropdown" data-id="${job.id}">${dropdownOptionsHtml}</div>` : ''}
+    </div>
     <div class="job-actions">
       <button class="menu-btn" data-id="${job.id}" aria-label="More options" title="More options">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
@@ -380,50 +474,40 @@ function createJobCard(job, index) {
   return card;
 }
 
-async function handleStatusChange(e) {
-  const id = parseInt(e.target.dataset.id);
+async function handleStatusUpdate(id, newStatus) {
   if (isNaN(id) || id <= 0) {
     showNotification('Invalid job ID', 'error');
     return;
   }
 
-  const status = e.target.value;
   const job = allJobs.find(j => j.id === id);
-  const previousStatus = job ? job.status : 'waiting';
-  const card = e.target.closest('.job-card');
-
-  // Update UI immediately
-  e.target.className = 'status-select ' + status;
-  if (card) {
-    card.classList.remove('status-waiting', 'status-interviewing', 'status-rejected');
-    card.classList.add('status-' + status);
+  if (!job) {
+    showNotification('Job not found', 'error');
+    return;
   }
 
+  const previousStatus = job.status;
+
   try {
-    const result = await window.api.updateStatus(id, status);
+    const result = await window.api.updateStatus(id, newStatus);
     if (result.success) {
-      if (job) job.status = status;
+      job.status = newStatus;
       updateStats();
+      renderJobs(); // Re-render to update the dropdown with new valid transitions
       showNotification('Status updated', 'success');
     } else {
-      // Revert on failure
-      e.target.value = previousStatus;
-      e.target.className = 'status-select ' + previousStatus;
-      if (card) {
-        card.classList.remove('status-waiting', 'status-interviewing', 'status-rejected');
-        card.classList.add('status-' + previousStatus);
-      }
       showNotification('Failed to update status: ' + (result.error || 'Unknown error'), 'error');
     }
   } catch (error) {
-    e.target.value = previousStatus;
-    e.target.className = 'status-select ' + previousStatus;
-    if (card) {
-      card.classList.remove('status-waiting', 'status-interviewing', 'status-rejected');
-      card.classList.add('status-' + previousStatus);
-    }
     showNotification('Error updating status: ' + error.message, 'error');
   }
+}
+
+// Legacy handler for select element (kept for backward compatibility)
+async function handleStatusChange(e) {
+  const id = parseInt(e.target.dataset.id);
+  const status = e.target.value;
+  handleStatusUpdate(id, status);
 }
 
 async function handleDelete(e) {
@@ -611,6 +695,128 @@ function openEditModal(id, field) {
   const handleEscape = (e) => {
     if (e.key === 'Escape') {
       closeEditModal();
+      document.removeEventListener('keydown', handleEscape);
+    }
+  };
+  document.addEventListener('keydown', handleEscape);
+}
+
+function openMissingFieldsModal(id, missingFields) {
+  const job = allJobs.find(j => j.id === id);
+  if (!job) {
+    showNotification('Job not found', 'error');
+    return;
+  }
+
+  const fieldLabels = {
+    company: 'Company',
+    title: 'Position',
+    location: 'Location'
+  };
+
+  const fieldPlaceholders = {
+    company: 'e.g., Acme Inc.',
+    title: 'e.g., Senior Developer',
+    location: 'e.g., San Francisco, CA'
+  };
+
+  // Build form fields HTML for missing fields only
+  const fieldsHtml = missingFields.map(field => `
+    <div class="form-group">
+      <label for="missing-${field}">${fieldLabels[field]}</label>
+      <input type="text" id="missing-${field}" name="${field}" placeholder="${fieldPlaceholders[field]}">
+    </div>
+  `).join('');
+
+  const missingCount = missingFields.length;
+  const fieldsText = missingFields.map(f => fieldLabels[f].toLowerCase()).join(', ');
+
+  // Create modal
+  const editOverlay = document.createElement('div');
+  editOverlay.className = 'modal-overlay show';
+  editOverlay.id = 'missing-fields-modal-overlay';
+
+  editOverlay.innerHTML = `
+    <div class="modal edit-modal">
+      <div class="modal-header">
+        <h2 class="modal-title">Complete Job Details</h2>
+        <button class="modal-close" id="close-missing-modal">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"/>
+            <line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
+      </div>
+      <form id="missing-fields-form" class="modal-form">
+        <p class="form-description">We couldn't automatically detect the ${fieldsText}. Please fill in the missing details.</p>
+        ${fieldsHtml}
+        <div class="form-actions">
+          <button type="button" class="btn-secondary" id="skip-missing-btn">Skip</button>
+          <button type="submit" class="btn-primary">Save Details</button>
+        </div>
+      </form>
+    </div>
+  `;
+
+  document.body.appendChild(editOverlay);
+  document.body.style.overflow = 'hidden';
+
+  const form = editOverlay.querySelector('#missing-fields-form');
+  const closeBtn = editOverlay.querySelector('#close-missing-modal');
+  const skipBtn = editOverlay.querySelector('#skip-missing-btn');
+  const firstInput = editOverlay.querySelector(`#missing-${missingFields[0]}`);
+
+  setTimeout(() => firstInput && firstInput.focus(), 100);
+
+  const closeMissingModal = () => {
+    editOverlay.remove();
+    document.body.style.overflow = '';
+  };
+
+  closeBtn.addEventListener('click', closeMissingModal);
+  skipBtn.addEventListener('click', closeMissingModal);
+  editOverlay.addEventListener('click', (e) => {
+    if (e.target === editOverlay) closeMissingModal();
+  });
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const updates = {};
+    let hasUpdates = false;
+
+    missingFields.forEach(field => {
+      const input = editOverlay.querySelector(`#missing-${field}`);
+      const value = input.value.trim();
+      if (value) {
+        updates[field] = value;
+        hasUpdates = true;
+      }
+    });
+
+    if (hasUpdates) {
+      try {
+        const result = await window.api.updateJob(id, updates);
+        if (result.success) {
+          // Update local job object
+          Object.assign(job, updates);
+          showNotification('Job details updated', 'success');
+          renderJobs();
+        } else {
+          showNotification('Failed to update: ' + (result.error || 'Unknown error'), 'error');
+        }
+      } catch (error) {
+        showNotification('Error updating: ' + error.message, 'error');
+      }
+    }
+
+    closeMissingModal();
+  });
+
+  // Handle Escape key
+  const handleEscape = (e) => {
+    if (e.key === 'Escape') {
+      closeMissingModal();
       document.removeEventListener('keydown', handleEscape);
     }
   };

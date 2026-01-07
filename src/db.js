@@ -1,4 +1,4 @@
-const VALID_STATUSES = ['waiting', 'rejected', 'interviewing'];
+const VALID_STATUSES = ['applied', 'interview', 'interviewing', 'waiting', 'offer', 'accepted', 'rejected', 'withdrawn'];
 const ALLOWED_UPDATE_FIELDS = ['company', 'title', 'location', 'status'];
 
 let Database = null;
@@ -79,17 +79,61 @@ function getDb() {
 }
 
 function initializeDb() {
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS jobs (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      url TEXT NOT NULL,
-      company TEXT,
-      title TEXT,
-      location TEXT,
-      applied_date TEXT NOT NULL,
-      status TEXT DEFAULT 'waiting' CHECK(status IN ('waiting', 'rejected', 'interviewing'))
-    )
-  `);
+  // Check if table exists
+  const tableExists = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='jobs'").get();
+
+  if (tableExists) {
+    // Check if we need to migrate (old constraint doesn't have 'applied')
+    const tableInfo = db.prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='jobs'").get();
+    const needsMigration = tableInfo && tableInfo.sql && !tableInfo.sql.includes("'applied'");
+
+    if (needsMigration) {
+      console.log('Migrating database to new status schema...');
+
+      // Create new table with updated constraint
+      db.exec(`
+        CREATE TABLE jobs_new (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          url TEXT NOT NULL,
+          company TEXT,
+          title TEXT,
+          location TEXT,
+          applied_date TEXT NOT NULL,
+          status TEXT DEFAULT 'applied' CHECK(status IN ('applied', 'interview', 'interviewing', 'waiting', 'offer', 'accepted', 'rejected', 'withdrawn'))
+        )
+      `);
+
+      // Copy data, mapping old 'waiting' to 'applied' for initial state jobs
+      db.exec(`
+        INSERT INTO jobs_new (id, url, company, title, location, applied_date, status)
+        SELECT id, url, company, title, location, applied_date,
+          CASE
+            WHEN status = 'waiting' THEN 'applied'
+            ELSE status
+          END
+        FROM jobs
+      `);
+
+      // Drop old table and rename new one
+      db.exec('DROP TABLE jobs');
+      db.exec('ALTER TABLE jobs_new RENAME TO jobs');
+
+      console.log('Database migration completed.');
+    }
+  } else {
+    // Create fresh table
+    db.exec(`
+      CREATE TABLE jobs (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        url TEXT NOT NULL,
+        company TEXT,
+        title TEXT,
+        location TEXT,
+        applied_date TEXT NOT NULL,
+        status TEXT DEFAULT 'applied' CHECK(status IN ('applied', 'interview', 'interviewing', 'waiting', 'offer', 'accepted', 'rejected', 'withdrawn'))
+      )
+    `);
+  }
 }
 
 function isValidUrl(url) {
@@ -110,7 +154,7 @@ function addJob(jobData) {
     throw new Error('Invalid URL format - must be HTTP or HTTPS');
   }
 
-  const status = jobData.status || 'waiting';
+  const status = jobData.status || 'applied';
   if (!VALID_STATUSES.includes(status)) {
     throw new Error(`Invalid status: ${status}`);
   }

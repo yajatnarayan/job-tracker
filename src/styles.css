@@ -19,9 +19,14 @@
   --accent-soft: rgba(212, 165, 116, 0.15);
   --accent-glow: rgba(212, 165, 116, 0.4);
 
-  --status-waiting: #e8b86d;
+  --status-applied: #8b9dc3;
+  --status-interview: #d4a574;
   --status-interviewing: #7dd3a8;
+  --status-waiting: #e8b86d;
+  --status-offer: #9b8cd4;
+  --status-accepted: #5cb85c;
   --status-rejected: #e87d7d;
+  --status-withdrawn: #8a8480;
 
   --border: rgba(255, 255, 255, 0.06);
   --border-strong: rgba(255, 255, 255, 0.12);
@@ -378,16 +383,36 @@ body::before {
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12);
 }
 
-.job-card.status-waiting {
-  --card-accent: var(--status-waiting);
+.job-card.status-applied {
+  --card-accent: var(--status-applied);
+}
+
+.job-card.status-interview {
+  --card-accent: var(--status-interview);
 }
 
 .job-card.status-interviewing {
   --card-accent: var(--status-interviewing);
 }
 
+.job-card.status-waiting {
+  --card-accent: var(--status-waiting);
+}
+
+.job-card.status-offer {
+  --card-accent: var(--status-offer);
+}
+
+.job-card.status-accepted {
+  --card-accent: var(--status-accepted);
+}
+
 .job-card.status-rejected {
   --card-accent: var(--status-rejected);
+}
+
+.job-card.status-withdrawn {
+  --card-accent: var(--status-withdrawn);
 }
 
 /* Status Indicator Bar */
@@ -471,6 +496,231 @@ body::before {
 
 .status-badge:hover {
   transform: scale(1.05);
+}
+
+/* Status Dropdown Wrapper - Connected to Badge */
+.status-dropdown-wrapper {
+  position: relative;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.status-badge-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border-radius: 6px;
+  font-size: 0.625rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  border: none;
+  font-family: var(--font-body);
+  background: transparent;
+}
+
+.status-badge-btn:disabled {
+  cursor: default;
+  opacity: 0.8;
+}
+
+.status-badge-btn .dropdown-arrow {
+  opacity: 0.6;
+  transition: transform var(--transition-fast), opacity var(--transition-fast);
+}
+
+.status-dropdown-wrapper.open .status-badge-btn .dropdown-arrow {
+  transform: rotate(180deg);
+  opacity: 1;
+}
+
+.status-badge-btn:not(:disabled):hover .dropdown-arrow {
+  opacity: 1;
+}
+
+/* Status badge button color variants */
+.status-badge-btn.status-applied {
+  background-color: rgba(139, 157, 195, 0.15);
+  color: var(--status-applied);
+}
+
+.status-badge-btn.status-interview {
+  background-color: rgba(212, 165, 116, 0.15);
+  color: var(--status-interview);
+}
+
+.status-badge-btn.status-interviewing {
+  background-color: rgba(125, 211, 168, 0.15);
+  color: var(--status-interviewing);
+}
+
+.status-badge-btn.status-waiting {
+  background-color: rgba(232, 184, 109, 0.15);
+  color: var(--status-waiting);
+}
+
+.status-badge-btn.status-offer {
+  background-color: rgba(155, 140, 212, 0.15);
+  color: var(--status-offer);
+}
+
+.status-badge-btn.status-accepted {
+  background-color: rgba(92, 184, 92, 0.15);
+  color: var(--status-accepted);
+}
+
+.status-badge-btn.status-rejected {
+  background-color: rgba(232, 125, 125, 0.15);
+  color: var(--status-rejected);
+}
+
+.status-badge-btn.status-withdrawn {
+  background-color: rgba(138, 132, 128, 0.15);
+  color: var(--status-withdrawn);
+}
+
+.status-badge-btn:not(:disabled):hover {
+  filter: brightness(1.15);
+}
+
+/* Connected Dropdown Panel */
+.status-dropdown {
+  position: absolute;
+  top: calc(100% - 1px);
+  left: 0;
+  min-width: 100%;
+  width: max-content;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-strong);
+  border-top: none;
+  border-radius: 0 0 8px 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  padding: 4px;
+  z-index: 1000;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-4px);
+  transition: all var(--transition-fast);
+}
+
+.status-dropdown-wrapper.open .status-badge-btn {
+  border-radius: 6px 6px 0 0;
+  border: 1px solid var(--border-strong);
+  border-bottom: 1px solid var(--bg-elevated);
+  position: relative;
+  z-index: 1001;
+}
+
+/* Keep text color when open - applied via status class */
+.status-dropdown-wrapper.open .status-badge-btn.status-applied { background-color: var(--bg-elevated); color: var(--status-applied); }
+.status-dropdown-wrapper.open .status-badge-btn.status-interview { background-color: var(--bg-elevated); color: var(--status-interview); }
+.status-dropdown-wrapper.open .status-badge-btn.status-interviewing { background-color: var(--bg-elevated); color: var(--status-interviewing); }
+.status-dropdown-wrapper.open .status-badge-btn.status-waiting { background-color: var(--bg-elevated); color: var(--status-waiting); }
+.status-dropdown-wrapper.open .status-badge-btn.status-offer { background-color: var(--bg-elevated); color: var(--status-offer); }
+.status-dropdown-wrapper.open .status-badge-btn.status-accepted { background-color: var(--bg-elevated); color: var(--status-accepted); }
+.status-dropdown-wrapper.open .status-badge-btn.status-rejected { background-color: var(--bg-elevated); color: var(--status-rejected); }
+.status-dropdown-wrapper.open .status-badge-btn.status-withdrawn { background-color: var(--bg-elevated); color: var(--status-withdrawn); }
+
+.status-dropdown-wrapper.open .status-dropdown {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+}
+
+/* Dropdown items */
+.status-dropdown-item {
+  display: block;
+  width: 100%;
+  padding: 6px 10px;
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  font-family: var(--font-body);
+  font-size: 0.625rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  text-align: left;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.status-dropdown-item:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+/* Dropdown item color variants */
+.status-dropdown-item.status-applied {
+  color: var(--status-applied);
+}
+
+.status-dropdown-item.status-applied:hover {
+  background: rgba(139, 157, 195, 0.15);
+}
+
+.status-dropdown-item.status-interview {
+  color: var(--status-interview);
+}
+
+.status-dropdown-item.status-interview:hover {
+  background: rgba(212, 165, 116, 0.15);
+}
+
+.status-dropdown-item.status-interviewing {
+  color: var(--status-interviewing);
+}
+
+.status-dropdown-item.status-interviewing:hover {
+  background: rgba(125, 211, 168, 0.15);
+}
+
+.status-dropdown-item.status-waiting {
+  color: var(--status-waiting);
+}
+
+.status-dropdown-item.status-waiting:hover {
+  background: rgba(232, 184, 109, 0.15);
+}
+
+.status-dropdown-item.status-offer {
+  color: var(--status-offer);
+}
+
+.status-dropdown-item.status-offer:hover {
+  background: rgba(155, 140, 212, 0.15);
+}
+
+.status-dropdown-item.status-accepted {
+  color: var(--status-accepted);
+}
+
+.status-dropdown-item.status-accepted:hover {
+  background: rgba(92, 184, 92, 0.15);
+}
+
+.status-dropdown-item.status-rejected {
+  color: var(--status-rejected);
+}
+
+.status-dropdown-item.status-rejected:hover {
+  background: rgba(232, 125, 125, 0.15);
+}
+
+.status-dropdown-item.status-withdrawn {
+  color: var(--status-withdrawn);
+}
+
+.status-dropdown-item.status-withdrawn:hover {
+  background: rgba(138, 132, 128, 0.15);
+}
+
+/* End state styling - no dropdown arrow, slightly muted */
+.status-dropdown-wrapper.end-state .status-badge-btn {
+  cursor: default;
 }
 
 /* Row Location */
@@ -736,6 +986,13 @@ body::before {
 
 .form-group {
   margin-bottom: var(--space-md);
+}
+
+.form-description {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  margin-bottom: var(--space-lg);
+  line-height: 1.5;
 }
 
 .form-group label {
