@@ -1,6 +1,14 @@
 const VALID_STATUSES = ['applied', 'interview', 'interviewing', 'waiting', 'offer', 'accepted', 'rejected', 'withdrawn'];
 const ALLOWED_UPDATE_FIELDS = ['company', 'title', 'location', 'status'];
 
+function getLocalDateString() {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
 let Database = null;
 let db = null;
 let dbInitialized = false;
@@ -85,9 +93,10 @@ function initializeDb() {
   if (tableExists) {
     // Check if we need to migrate (old constraint doesn't have 'applied')
     const tableInfo = db.prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='jobs'").get();
-    const needsMigration = tableInfo && tableInfo.sql && !tableInfo.sql.includes("'applied'");
+    const needsStatusMigration = tableInfo && tableInfo.sql && !tableInfo.sql.includes("'applied'");
+    const needsStatusUpdatedAtMigration = tableInfo && tableInfo.sql && !tableInfo.sql.includes('status_updated_at');
 
-    if (needsMigration) {
+    if (needsStatusMigration) {
       console.log('Migrating database to new status schema...');
 
       // Create new table with updated constraint
@@ -99,18 +108,21 @@ function initializeDb() {
           title TEXT,
           location TEXT,
           applied_date TEXT NOT NULL,
-          status TEXT DEFAULT 'applied' CHECK(status IN ('applied', 'interview', 'interviewing', 'waiting', 'offer', 'accepted', 'rejected', 'withdrawn'))
+          status TEXT DEFAULT 'applied' CHECK(status IN ('applied', 'interview', 'interviewing', 'waiting', 'offer', 'accepted', 'rejected', 'withdrawn')),
+          status_updated_at TEXT
         )
       `);
 
       // Copy data, mapping old 'waiting' to 'applied' for initial state jobs
+      // Set status_updated_at to applied_date for existing records
       db.exec(`
-        INSERT INTO jobs_new (id, url, company, title, location, applied_date, status)
+        INSERT INTO jobs_new (id, url, company, title, location, applied_date, status, status_updated_at)
         SELECT id, url, company, title, location, applied_date,
           CASE
             WHEN status = 'waiting' THEN 'applied'
             ELSE status
-          END
+          END,
+          applied_date
         FROM jobs
       `);
 
@@ -119,6 +131,13 @@ function initializeDb() {
       db.exec('ALTER TABLE jobs_new RENAME TO jobs');
 
       console.log('Database migration completed.');
+    } else if (needsStatusUpdatedAtMigration) {
+      // Add status_updated_at column to existing table
+      console.log('Adding status_updated_at column...');
+      db.exec('ALTER TABLE jobs ADD COLUMN status_updated_at TEXT');
+      // Set status_updated_at to applied_date for existing records
+      db.exec('UPDATE jobs SET status_updated_at = applied_date WHERE status_updated_at IS NULL');
+      console.log('status_updated_at column added.');
     }
   } else {
     // Create fresh table
@@ -130,7 +149,8 @@ function initializeDb() {
         title TEXT,
         location TEXT,
         applied_date TEXT NOT NULL,
-        status TEXT DEFAULT 'applied' CHECK(status IN ('applied', 'interview', 'interviewing', 'waiting', 'offer', 'accepted', 'rejected', 'withdrawn'))
+        status TEXT DEFAULT 'applied' CHECK(status IN ('applied', 'interview', 'interviewing', 'waiting', 'offer', 'accepted', 'rejected', 'withdrawn')),
+        status_updated_at TEXT
       )
     `);
   }
@@ -160,9 +180,10 @@ function addJob(jobData) {
   }
 
   const db = getDb();
+  const today = getLocalDateString();
   const stmt = db.prepare(`
-    INSERT INTO jobs (url, company, title, location, applied_date, status)
-    VALUES (?, ?, ?, ?, ?, ?)
+    INSERT INTO jobs (url, company, title, location, applied_date, status, status_updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
   `);
   const result = stmt.run(
     jobData.url.trim(),
@@ -170,7 +191,8 @@ function addJob(jobData) {
     jobData.title || null,
     jobData.location || null,
     jobData.applied_date,
-    status
+    status,
+    today
   );
   return result.lastInsertRowid;
 }
@@ -191,8 +213,9 @@ function updateStatus(id, status) {
   }
 
   const db = getDb();
-  const stmt = db.prepare('UPDATE jobs SET status = ? WHERE id = ?');
-  const result = stmt.run(status, id);
+  const today = getLocalDateString();
+  const stmt = db.prepare('UPDATE jobs SET status = ?, status_updated_at = ? WHERE id = ?');
+  const result = stmt.run(status, today, id);
 
   if (result.changes === 0) {
     throw new Error(`Job with id ${id} not found`);
@@ -213,6 +236,7 @@ function updateJob(id, updates) {
   const db = getDb();
   const fields = [];
   const values = [];
+  let statusChanged = false;
 
   for (const [key, value] of Object.entries(updates)) {
     if (!ALLOWED_UPDATE_FIELDS.includes(key)) {
@@ -223,6 +247,10 @@ function updateJob(id, updates) {
       throw new Error(`Invalid status: ${value}`);
     }
 
+    if (key === 'status' && value !== undefined) {
+      statusChanged = true;
+    }
+
     if (value !== undefined) {
       fields.push(`${key} = ?`);
       values.push(value);
@@ -230,6 +258,12 @@ function updateJob(id, updates) {
   }
 
   if (fields.length === 0) return null;
+
+  // Update status_updated_at if status changed
+  if (statusChanged) {
+    fields.push('status_updated_at = ?');
+    values.push(getLocalDateString());
+  }
 
   values.push(id);
   const stmt = db.prepare(`UPDATE jobs SET ${fields.join(', ')} WHERE id = ?`);
