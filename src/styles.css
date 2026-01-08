@@ -615,14 +615,14 @@ body::before {
 /* Connected Dropdown Panel */
 .status-dropdown {
   position: absolute;
-  top: calc(100% - 1px);
-  left: 0;
-  min-width: 100%;
+  top: 100%;
+  left: -1px;
+  min-width: calc(100% + 2px);
   width: max-content;
   background: var(--bg-elevated);
   border: 1px solid var(--border-strong);
   border-top: none;
-  border-radius: 0 0 8px 8px;
+  border-radius: 0 0 6px 6px;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
   padding: 4px;
   z-index: 1000;
@@ -635,7 +635,8 @@ body::before {
 .status-dropdown-wrapper.open .status-badge-btn {
   border-radius: 6px 6px 0 0;
   border: 1px solid var(--border-strong);
-  border-bottom: 1px solid var(--bg-elevated);
+  border-bottom: 1px solid transparent;
+  background: var(--bg-elevated);
   position: relative;
   z-index: 1001;
 }
