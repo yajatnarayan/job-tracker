@@ -29,6 +29,40 @@ function getNextStates(currentStatus) {
   return STATE_TRANSITIONS[currentStatus] || [];
 }
 
+// Calculate days since last status update
+function getDaysSinceStatusUpdate(statusUpdatedAt, appliedDate) {
+  const dateStr = statusUpdatedAt || appliedDate;
+  if (!dateStr) return 0;
+
+  const parts = dateStr.split('-');
+  if (parts.length !== 3) return 0;
+
+  const year = parseInt(parts[0], 10);
+  const month = parseInt(parts[1], 10) - 1;
+  const day = parseInt(parts[2], 10);
+  const updateDate = new Date(year, month, day);
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const diffTime = today - updateDate;
+  const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+  return diffDays;
+}
+
+// Get staleness class based on days since last update
+function getStalenessClass(job) {
+  // Don't highlight end-state jobs (accepted, rejected, withdrawn)
+  const endStates = ['accepted', 'rejected', 'withdrawn'];
+  if (endStates.includes(job.status)) return '';
+
+  const days = getDaysSinceStatusUpdate(job.status_updated_at, job.applied_date);
+
+  if (days >= 14) return 'stale-critical';
+  if (days >= 7) return 'stale-warning';
+  return '';
+}
+
 // DOM Elements
 const addJobForm = document.getElementById('add-job-form');
 const jobUrlInput = document.getElementById('job-url');
@@ -391,7 +425,8 @@ function renderJobs() {
 
 function createJobCard(job, index) {
   const card = document.createElement('article');
-  card.className = `job-card status-${job.status}`;
+  const stalenessClass = getStalenessClass(job);
+  card.className = `job-card status-${job.status}${stalenessClass ? ' ' + stalenessClass : ''}`;
   card.dataset.id = job.id;
 
   const companyName = escapeHtml(job.company) || 'Unknown';

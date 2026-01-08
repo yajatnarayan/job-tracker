@@ -415,6 +415,31 @@ body::before {
   --card-accent: var(--status-withdrawn);
 }
 
+/* Staleness highlighting - yellow for 1 week, red for 2 weeks */
+.job-card.stale-warning {
+  background: rgba(232, 184, 109, 0.12);
+}
+
+.job-card.stale-warning:nth-child(odd) {
+  background: rgba(232, 184, 109, 0.10);
+}
+
+.job-card.stale-warning:hover {
+  background: rgba(232, 184, 109, 0.18);
+}
+
+.job-card.stale-critical {
+  background: rgba(232, 125, 125, 0.12);
+}
+
+.job-card.stale-critical:nth-child(odd) {
+  background: rgba(232, 125, 125, 0.10);
+}
+
+.job-card.stale-critical:hover {
+  background: rgba(232, 125, 125, 0.18);
+}
+
 /* Status Indicator Bar */
 .job-status-bar {
   width: 4px;
